@@ -4,7 +4,7 @@ import time
 import gzip
 import fileinput
 import random
-# from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier
 
 def func0():
 	imap = {}
@@ -138,6 +138,7 @@ def func5():
 	for line in fileinput.input("feature/buy/"+target):
 		pos[line.strip()] = True
 	fileinput.close()
+	file = open("uid_iid_simple2.txt","a")
 	cnt, tot, cor = 0, 0, 0
 	# for line in fileinput.input("feature/act/"+target):
 	for line in gzip.open("uid_iid_filter.txt.gz"):
@@ -162,14 +163,15 @@ def func5():
 		# if len(b2) >= 1 and len(b3) >= 2:
 		# if len(b4) >= 4:
 		# if any([dm[d]>=4 for d in dm]):
+		# if len(b1) >= 1 or len(b2) >= 1 and len(b3) >= 2 or any([dm[d]>=4 for d in dm]):
+		# 	tot += 1
+		# 	if pos.has_key(uid+" "+iid):
+		# 		cor += 1
+		# # elif len(items)!=0:
+		# # 	print items
 		if len(b1) >= 1 or len(b2) >= 1 and len(b3) >= 2 or any([dm[d]>=4 for d in dm]):
-			tot += 1
-			# print items
-			if pos.has_key(uid+" "+iid):
-				cor += 1
-		# elif len(items)!=0:
-		# 	print items
-	print target, len(pos), cnt, tot, cor, 1.0*cor/tot, 1.0*cor/len(pos), 2.0*cor**2/tot/len(pos)/(1.0*cor/tot+1.0*cor/len(pos))
+			file.write(uid+" "+iid+"\n")
+	# print target, len(pos), cnt, tot, cor, 1.0*cor/tot, 1.0*cor/len(pos), 2.0*cor**2/tot/len(pos)/(1.0*cor/tot+1.0*cor/len(pos))
 	pass
 
 # 基于机器学习预测
@@ -181,6 +183,10 @@ def func6():
 	# clf.predict([[2., 2.]])
 	# clf.predict_proba([[2., 2.]])
 	#### 训练 ####
+	sel = {}
+	for line in fileinput.input("uid_iid_simple2.txt"):
+		sel[line.strip()] = True
+	fileinput.close()
 	train, predict = ["12-15-0","12-16-0","12-17-0"], "12-18-0"
 	# train, predict = ["12-16-0","12-17-0","12-18-0"], "12-19-0"
 	X0, Y0, X1, Y1, X2, Y2 = [], [], [], [], [], []
@@ -195,6 +201,8 @@ def func6():
 		fileinput.close()
 		for line in gzip.open("feature/uid_iid/"+date+".txt.gz"):
 			uid, iid, feat = line.strip().split(" ")[0], line.strip().split(" ")[1], [float(i) for i in line.strip().split(" ")[2:]]
+			if not sel.has_key(uid+" "+iid):
+				continue
 			feat.extend(imap[iid])
 			if pos.has_key(uid+" "+iid):
 				Y1.append(1)
@@ -221,14 +229,15 @@ def func6():
 		imap[line.strip().split(" ")[0]] = [float(i) for i in line.strip().split(" ")[1:]]
 	fileinput.close()
 	file = open("tianchi_mobile_recommendation_predict_4_16.txt","w")
-	num, tot, cor = 0, 0, 0
+	tot, cor = 0, 0, 0
 	for line in gzip.open("feature/uid_iid/"+predict+".txt.gz"):
-		num += 1
+		if not sel.has_key(uid+" "+iid):
+			continue
 		uid, iid, feat = line.strip().split(" ")[0], line.strip().split(" ")[1], [float(i) for i in line.strip().split(" ")[2:]]
 		feat.extend(imap[iid])
 		# pred = clf.predict(feat)
 		pred, proba = 0, clf.predict_proba(feat)
-		print uid, iid, proba, num, tot, cor
+		print uid, iid, proba, tot, cor
 		if clf.predict_proba(feat)[0][1] >= 0.6:
 			file.write(uid+","+iid+"\n")
 			pred = 1
@@ -258,7 +267,7 @@ def func7():
 # func2()
 # func3()
 # func4()
-func5()
-# func6()
+# func5()
+func6()
 # func7()
 
