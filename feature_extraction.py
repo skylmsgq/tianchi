@@ -113,48 +113,63 @@ def func3():
 
 # 过滤待预测集
 def func4():
-	target = "12-18-0"
+	target = "12-18-0" #评估日期，分界日期
 	pos = {}
 	for line in fileinput.input("feature/buy/"+target):
 		pos[line.strip()] = True
 	fileinput.close()
-	file = open("select.txt","w")
-	tot, cor = 0, 0
+	file = open("feature/act/"+target,"w")
 	for line in gzip.open("uid_iid_filter.txt.gz"):
-		(uid, iid, ict), items = line.strip().split("\t")[0].split(" "), [(int(time.mktime(time.strptime('2014-'+target,'%Y-%m-%d-%H'))-time.mktime(time.strptime('2014-'+i.split(",")[0],'%Y-%m-%d-%H')))/(24*3600)+1, int(i.split(",")[1])) for i in line.strip().split("\t")[1].split(" ")]
+		(uid, iid, ict) = line.strip().split("\t")[0].split(" ")
 		if pos.has_key(uid+" "+iid):
 			file.write(line)
-			behs = filter(lambda x:x[0]>0, items)
-			print behs
-			if len(behs) != 0:
-				tot += 1
 	file.close()
 	pass
 
 # 基于规则预测
 def func5():
-	target = "12-18-0"
+	# target, etime = "12-13-0", "12-12-23" #评估日期，分界日期
+	# target, etime = "12-14-0", "12-13-23" #评估日期，分界日期
+	# target, etime = "12-15-0", "12-14-23" #评估日期，分界日期
+	# target, etime = "12-16-0", "12-15-23" #评估日期，分界日期
+	# target, etime = "12-17-0", "12-16-23" #评估日期，分界日期
+	target, etime = "12-18-0", "12-17-23" #评估日期，分界日期
 	pos = {}
 	for line in fileinput.input("feature/buy/"+target):
 		pos[line.strip()] = True
 	fileinput.close()
-	tot, cor = 0, 0
-	# for line in fileinput.input("select.txt"):
+	cnt, tot, cor = 0, 0, 0
+	# for line in fileinput.input("feature/act/"+target):
 	for line in gzip.open("uid_iid_filter.txt.gz"):
-		(uid, iid, ict), items = line.strip().split("\t")[0].split(" "), filter(lambda x:x[0]>0, [(int(time.mktime(time.strptime('2014-'+target,'%Y-%m-%d-%H'))-time.mktime(time.strptime('2014-'+i.split(",")[0],'%Y-%m-%d-%H')))/(24*3600)+1, int(i.split(",")[1])) for i in line.strip().split("\t")[1].split(" ")])
+		(uid, iid, ict), items = line.strip().split("\t")[0].split(" "), filter(lambda x:x[0]>0, [(int(time.mktime(time.strptime('2014-'+etime,'%Y-%m-%d-%H'))-time.mktime(time.strptime('2014-'+i.split(",")[0],'%Y-%m-%d-%H')))/(24*3600)+1, int(i.split(",")[1])) for i in line.strip().split("\t")[1].split(" ")])
 		buy = filter(lambda x:x[0]>0 and x[1]==4, items)
 		last = buy[-1][0] if len(buy)!=0 else 100
-		b1 = filter(lambda x:0<x[0]<=min(1,last) and x[1] in [2,3], items)
-		b2 = filter(lambda x:0<x[0]<=min(1,last) and x[1] in [1], items)
-		tot += 1
+		# 加购物车
+		# b1 = filter(lambda x:0<x[0]<=min(1,last-1) and x[1]==3, items)
+		b1 = filter(lambda x:0<x[0]<=min(5,last-1) and x[1]==3, items)
+		# 加搜藏夹
+		b2, b3 = filter(lambda x:0<x[0]<=min(3,last-1) and x[1]==2, items), filter(lambda x:0<x[0]<=2 and x[1]==1, items)
+		# 最后点击
+		b4 = filter(lambda x:0<x[0]<=min(1,last-1) and x[1]==1, items)
+		# 最近点击
+		b5 = filter(lambda x:0<x[0]<=min(2,last-1) and x[1]==1, items)
+		dm = {}
+		for b in b5:
+			dm[b] = dm[b]+1 if dm.has_key(b) else 1
+		cnt += 1
 		# 规则条件
-		if len(b1) >= 1:
-		# if len(b1) >= 1 or len(b2) >= 2 or (last!=100 and len(b2) != 0):
-			cor += 1
-		# else:
-		# 	if len(items) != 0:
-		# 		print items
-	print len(pos), tot, cor
+		# if len(b1) >= 1:
+		# if len(b2) >= 1 and len(b3) >= 2:
+		# if len(b4) >= 4:
+		# if any([dm[d]>=4 for d in dm]):
+		if len(b1) >= 1 or len(b2) >= 1 and len(b3) >= 2 or any([dm[d]>=4 for d in dm]):
+			tot += 1
+			# print items
+			if pos.has_key(uid+" "+iid):
+				cor += 1
+		# elif len(items)!=0:
+		# 	print items
+	print target, len(pos), cnt, tot, cor, 1.0*cor/tot, 1.0*cor/len(pos), 2.0*cor**2/tot/len(pos)/(1.0*cor/tot+1.0*cor/len(pos))
 	pass
 
 # 基于机器学习预测
